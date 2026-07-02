@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4a6cf7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>きょうしつトーク</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  :root{
+    --accent:#4a6cf7;
+    --accent-light:#eef1ff;
+    --green:#34c759;
+    --bg-chat:#edf1f7;
+    --bg-side:#faf7f2;
+    --own:#c9f0b2;
+    --ink:#2b3345;
+    --sub:#8a93a6;
+    --line:#e4e8f0;
+    --danger:#ff3b30;
+  }
+  html,body{height:100%}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN W4",-apple-system,"Segoe UI",sans-serif;
+    color:var(--ink);background:#fff;overflow:hidden;
+  }
+  button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit}
+  input,textarea{font-family:inherit;font-size:16px;color:inherit}
+
+  #app{display:flex;height:100dvh}
+
+  /* ---------- サイドバー ---------- */
+  #sidebar{
+    width:250px;flex-shrink:0;background:var(--bg-side);
+    border-right:1px solid var(--line);display:flex;flex-direction:column;
+  }
+  #sideHead{padding:18px 16px 10px}
+  #sideHead h1{font-size:18px;display:flex;align-items:center;gap:8px}
+  #modeBadge{
+    display:inline-flex;align-items:center;gap:5px;margin-top:8px;
+    font-size:11px;padding:3px 10px;border-radius:99px;background:#eef1f5;color:var(--sub)
+  }
+  #modeBadge.cloud{background:#e2f6e8;color:#1f8a45}
+  #chanList{flex:1;overflow-y:auto;padding:6px 10px}
+  .chanItem{
+    display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+    padding:10px 12px;border-radius:12px;font-size:14.5px;margin-bottom:2px;
+  }
+  .chanItem:hover{background:#f0ece4}
+  .chanItem.active{background:var(--accent-light);color:var(--accent);font-weight:bold}
+  .chanItem .emoji{font-size:17px}
+  .chanItem .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chanItem .edit{font-size:13px;color:var(--sub);padding:2px 4px;border-radius:6px;display:none}
+  .chanItem.active .edit{display:block}
+  .chanItem .edit:hover{background:#dde3f8}
+  #addChan{
+    display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;
+    border-radius:12px;font-size:14px;color:var(--sub);
+  }
+  #addChan:hover{background:#f0ece4}
+  #sideFoot{
+    border-top:1px solid var(--line);padding:12px 16px;
+    display:flex;align-items:center;gap:10px;
+  }
+  #myName{flex:1;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #gearBtn{font-size:19px;padding:4px;border-radius:8px}
+  #gearBtn:hover{background:#f0ece4}
+
+  #scrim{
+    display:none;position:fixed;inset:0;background:rgba(20,25,40,.35);z-index:40;
+  }
+
+  /* ---------- メイン ---------- */
+  main{flex:1;display:flex;flex-direction:column;min-width:0}
+  #topbar{
+    display:flex;align-items:center;gap:10px;padding:10px 14px;
+    border-bottom:1px solid var(--line);background:#fff;
+  }
+  #menuBtn{display:none;font-size:21px;padding:4px 8px;border-radius:8px}
+  #chanTitle{flex:1;font-size:16.5px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #tabs{display:flex;background:#f0f2f7;border-radius:99px;padding:3px}
+  #tabs button{
+    padding:6px 16px;border-radius:99px;font-size:13.5px;color:var(--sub);white-space:nowrap;
+  }
+  #tabs button.on{background:#fff;color:var(--accent);font-weight:bold;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+  /* ---------- トーク ---------- */
+  #chatView{flex:1;display:flex;flex-direction:column;min-height:0;background:var(--bg-chat)}
+  #messages{flex:1;overflow-y:auto;padding:16px 14px 8px;-webkit-overflow-scrolling:touch}
+  .daySep{text-align:center;margin:14px 0 10px}
+  .daySep span{font-size:11.5px;background:rgba(120,130,150,.18);color:#5d6678;padding:3px 12px;border-radius:99px}
+  .msgRow{display:flex;margin-bottom:10px;align-items:flex-end;gap:6px}
+  .msgRow.own{flex-direction:row-reverse}
+  .msgCol{max-width:min(72%,480px);display:flex;flex-direction:column}
+  .msgRow.own .msgCol{align-items:flex-end}
+  .author{font-size:11.5px;color:#6b7488;margin:0 4px 3px}
+  .bubble{
+    background:#fff;border:1px solid var(--line);border-radius:16px;
+    padding:9px 13px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word;
+  }
+  .msgRow.own .bubble{background:var(--own);border-color:transparent}
+  .bubble .tag{color:var(--accent);font-weight:bold}
+  .imgWrap{display:grid;gap:5px;margin-top:2px}
+  .imgWrap.multi{grid-template-columns:1fr 1fr}
+  .imgWrap img{
+    width:100%;max-width:250px;border-radius:13px;display:block;cursor:pointer;
+    background:#dde2ea;object-fit:cover;aspect-ratio:4/3;
+  }
+  .meta{font-size:10.5px;color:var(--sub);white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .delBtn{font-size:11px;color:var(--sub);padding:1px 5px;border-radius:6px;opacity:.55}
+  .delBtn:hover{background:#e3e7ef;opacity:1;color:var(--danger)}
+  #emptyChat{text-align:center;color:var(--sub);font-size:14px;padding:60px 20px;line-height:2}
+
+  /* ---------- 入力欄 ---------- */
+  #composer{
+    background:#fff;border-top:1px solid var(--line);
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+  }
+  #preview{display:none;gap:8px;padding:4px 4px 8px;overflow-x:auto}
+  #preview.show{display:flex}
+  .pv{position:relative;flex-shrink:0}
+  .pv img{width:64px;height:64px;object-fit:cover;border-radius:10px;display:block}
+  .pv button{
+    position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
+    background:#39415a;color:#fff;font-size:11px;line-height:20px;text-align:center;
+  }
+  #composerRow{display:flex;align-items:flex-end;gap:8px}
+  #camBtn{font-size:22px;padding:7px 6px;border-radius:10px}
+  #camBtn:hover{background:#f0f2f7}
+  #msgInput{
+    flex:1;border:none;background:#f0f2f7;border-radius:18px;resize:none;
+    padding:10px 15px;max-height:110px;line-height:1.5;outline:none;
+  }
+  #sendBtn{
+    width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;
+    font-size:17px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  }
+  #sendBtn:disabled{background:#c3cbe0}
+
+  /* ---------- アルバム ---------- */
+  #albumView{flex:1;display:none;flex-direction:column;min-height:0;background:#f7f8fb}
+  #albumView.show{display:flex}
+  #chatView.hide{display:none}
+  #albumTools{padding:12px 14px 4px;background:#f7f8fb}
+  #albumSearch{
+    width:100%;border:1px solid var(--line);border-radius:12px;padding:9px 14px;
+    background:#fff;outline:none;
+  }
+  #tagChips{display:flex;gap:7px;overflow-x:auto;padding:10px 0 4px}
+  .chip{
+    flex-shrink:0;font-size:12.5px;padding:5px 13px;border-radius:99px;
+    background:#fff;border:1px solid var(--line);color:#5d6678;
+  }
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:bold}
+  #albumGrid{flex:1;overflow-y:auto;padding:8px 14px 24px}
+  .monthHead{font-size:13px;font-weight:bold;color:#5d6678;margin:14px 2px 8px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .card{
+    background:#fff;border-radius:14px;overflow:hidden;cursor:pointer;
+    box-shadow:0 1px 4px rgba(30,40,70,.07);border:1px solid #eef0f5;
+  }
+  .card:hover{box-shadow:0 3px 10px rgba(30,40,70,.13)}
+  .card .thumb{position:relative}
+  .card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#dde2ea}
+  .card .cnt{
+    position:absolute;right:6px;bottom:6px;background:rgba(20,25,40,.65);color:#fff;
+    font-size:11px;padding:2px 8px;border-radius:99px;
+  }
+  .card .cap{
+    font-size:12.5px;padding:8px 10px 2px;line-height:1.45;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:1em;
+  }
+  .card .who{font-size:10.5px;color:var(--sub);padding:3px 10px 9px}
+  #emptyAlbum{text-align:center;color:var(--sub);font-size:14px;padding:60px 20px;line-height:2}
+
+  /* ---------- モーダル ---------- */
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(20,25,40,.45);z-index:100;
+    align-items:center;justify-content:center;padding:18px;
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:#fff;border-radius:18px;width:100%;max-width:430px;max-height:88dvh;
+    overflow-y:auto;padding:22px;
+  }
+  .modal h2{font-size:17px;margin-bottom:14px}
+  .modal label{display:block;font-size:12.5px;color:#5d6678;margin:14px 0 5px;font-weight:bold}
+  .modal input[type=text],.modal textarea{
+    width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px 13px;outline:none;
+  }
+  .modal input:focus,.modal textarea:focus{border-color:var(--accent)}
+  .modal textarea{min-height:90px;resize:vertical;font-size:12px;font-family:monospace}
+  .modal .hint{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:6px}
+  .emojiRow{display:flex;flex-wrap:wrap;gap:6px}
+  .emojiRow button{
+    font-size:20px;width:40px;height:40px;border-radius:10px;border:1.5px solid var(--line);
+  }
+  .emojiRow button.on{border-color:var(--accent);background:var(--accent-light)}
+  .btnRow{display:flex;gap:10px;margin-top:20px}
+  .btn{
+    flex:1;padding:11px;border-radius:12px;font-size:14.5px;font-weight:bold;text-align:center;
+  }
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.ghost{background:#f0f2f7;color:#5d6678}
+  .btn.danger{background:#ffecec;color:var(--danger)}
+  .modal hr{border:none;border-top:1px solid var(--line);margin:20px 0 4px}
+  .modal .sec{font-size:13.5px;font-weight:bold;margin-top:18px}
+  .smallBtns{display:flex;gap:8px;margin-top:10px}
+  .smallBtns .btn{font-size:13px;padding:9px}
+
+  /* ---------- ライトボックス ---------- */
+  #lightbox{
+    display:none;position:fixed;inset:0;background:rgba(10,13,22,.92);z-index:200;
+    flex-direction:column;align-items:center;justify-content:center;
+  }
+  #lightbox.show{display:flex}
+  #lbImg{max-width:94vw;max-height:74dvh;border-radius:8px;object-fit:contain}
+  #lbCap{color:#e8ebf2;font-size:13.5px;margin-top:12px;text-align:center;padding:0 20px;max-width:640px}
+  #lbMeta{color:#9aa3b8;font-size:11.5px;margin-top:5px}
+  #lbBar{display:flex;gap:14px;margin-top:16px}
+  #lbBar button,#lbBar a{
+    color:#fff;background:rgba(255,255,255,.14);border-radius:99px;padding:8px 18px;
+    font-size:13.5px;text-decoration:none;
+  }
+  #lbClose{position:absolute;top:calc(12px + env(safe-area-inset-top));right:16px;color:#fff;font-size:26px;padding:6px 10px}
+  .lbNav{position:absolute;top:50%;transform:translateY(-50%);color:#fff;font-size:30px;padding:14px}
+  #lbPrev{left:2px}#lbNext{right:2px}
+
+  /* ---------- モバイル ---------- */
+  @media (max-width:760px){
+    #sidebar{
+      position:fixed;left:0;top:0;bottom:0;z-index:50;transform:translateX(-105%);
+      transition:transform .22s ease;box-shadow:4px 0 18px rgba(0,0,0,.12);
+      padding-top:env(safe-area-inset-top);
+    }
+    #sidebar.open{transform:translateX(0)}
+    #scrim.show{display:block}
+    #menuBtn{display:block}
+    #topbar{padding-top:calc(10px + env(safe-area-inset-top))}
+    .msgCol{max-width:80%}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div id="sideHead">
+      <h1>🏫 きょうしつトーク</h1>
+      <span id="modeBadge">📱 この端末のみ</span>
+    </div>
+    <nav id="chanList"></nav>
+    <div style="padding:6px 10px">
+      <button id="addChan">＋ 新しいチャンネル</button>
+    </div>
+    <div id="sideFoot">
+      <span id="myName"></span>
+      <button id="gearBtn" title="設定">⚙️</button>
+    </div>
+  </aside>
+  <div id="scrim"></div>
+
+  <main>
+    <header id="topbar">
+      <button id="menuBtn">☰</button>
+      <div id="chanTitle"></div>
+      <div id="tabs">
+        <button id="tabChat" class="on">💬 トーク</button>
+        <button id="tabAlbum">🖼 アルバム</button>
+      </div>
+    </header>
+
+    <section id="chatView">
+      <div id="messages"></div>
+      <div id="composer">
+        <div id="preview"></div>
+        <div id="composerRow">
+          <button id="camBtn" title="写真を追加">📷</button>
+          <input type="file" id="fileInput" accept="image/*" multiple hidden>
+          <textarea id="msgInput" rows="1" placeholder="メッセージ（#タグ）"></textarea>
+          <button id="sendBtn" title="送信">➤</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="albumView">
+      <div id="albumTools">
+        <input type="search" id="albumSearch" placeholder="🔍 キャプションを検索">
+        <div id="tagChips"></div>
+      </div>
+      <div id="albumGrid"></div>
+    </section>
+  </main>
+</div>
+
+<!-- チャンネル作成・編集 -->
+<div class="overlay" id="chanOverlay">
+  <div class="modal">
+    <h2 id="chanModalTitle">新しいチャンネル</h2>
+    <label>チャンネル名</label>
+    <input type="text" id="chanName" placeholder="例：6年 算数">
+    <label>アイコン</label>
+    <div class="emojiRow" id="emojiRow"></div>
+    <div class="btnRow">
+      <button class="btn ghost" id="chanCancel">キャンセル</button>
+      <button class="btn primary" id="chanSave">保存</button>
+    </div>
+    <div class="btnRow" id="chanDelRow" style="display:none">
+      <button class="btn danger" id="chanDelete">このチャンネルを削除（メッセージも消えます）</button>
+    </div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div class="overlay" id="setOverlay">
+  <div class="modal">
+    <h2 id="setTitle">⚙️ 設定</h2>
+    <label>あなたの名前（メッセージに表示されます）</label>
+    <input type="text" id="setName" placeholder="例：山田">
+
+    <hr>
+    <div class="sec">☁️ 共有モード（同僚とリアルタイム同期）</div>
+    <p class="hint" id="cloudStatus"></p>
+    <label>ルームコード（同じコードの人とつながります）</label>
+    <input type="text" id="setRoom" placeholder="例：sakura-shou-2026">
+    <label>Firebase設定（コンソールからコピーして貼り付け）</label>
+    <textarea id="setConfig" placeholder='const firebaseConfig = { apiKey: "...", ... } のかたまりを丸ごと貼り付けてOK'></textarea>
+    <p class="hint">
+      Firebase（Googleのサービス）のプロジェクトを1つ作ると、同僚と同期できるようになります。
+      無料のSparkプランでOK・クレジットカード登録も不要です（写真もデータベース内に直接保存する設計のため）。
+      設定しなければ、この端末だけで使えます。
+    </p>
+    <div class="smallBtns" id="cloudBtns">
+      <button class="btn primary" id="cloudEnable">共有モードを有効にする</button>
+    </div>
+
+    <hr>
+    <div class="sec" id="backupSec">💾 バックアップ（この端末のみモード）</div>
+    <div class="smallBtns" id="backupBtns">
+      <button class="btn ghost" id="exportBtn">書き出す</button>
+      <button class="btn ghost" id="importBtn">読み込む</button>
+      <input type="file" id="importFile" accept="application/json" hidden>
+    </div>
+
+    <div class="btnRow">
+      <button class="btn primary" id="setSave">保存して閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ライトボックス -->
+<div id="lightbox">
+  <button id="lbClose">✕</button>
+  <button class="lbNav" id="lbPrev">‹</button>
+  <img id="lbImg" alt="">
+  <button class="lbNav" id="lbNext">›</button>
+  <div id="lbCap"></div>
+  <div id="lbMeta"></div>
+  <div id="lbBar">
+    <a id="lbDl" download="板書.jpg">⬇ 保存</a>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ================= ユーティリティ ================= */
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('読み込み失敗: ' + src));
+    document.head.appendChild(s);
+  });
+}
+const EMOJIS = ['💬','📐','📖','🔬','🌏','🎨','🎵','🏃','📸','⭐','🍀','🧮'];
+const TAG_RE = /#([^\s#＃]+)/g;
+
+/* ================= 設定・状態 ================= */
+const settings = JSON.parse(localStorage.getItem('kt-settings') || '{}');
+function saveSettings() { localStorage.setItem('kt-settings', JSON.stringify(settings)); }
+// このアプリ専用のFirebaseプロジェクト（kyoshitsu-talk）。開くだけで共有モードになる
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDbYzUJ7EuOUmfkc_bdrDoOOPmD77Z-wlc',
+  authDomain: 'kyoshitsu-talk.firebaseapp.com',
+  projectId: 'kyoshitsu-talk',
+  storageBucket: 'kyoshitsu-talk.firebasestorage.app',
+  messagingSenderId: '492385982449',
+  appId: '1:492385982449:web:e32fc20a91a4d5d6635650',
+};
+function activeCloudConfig() {
+  if (settings.firebaseConfig) return settings.firebaseConfig;
+  if (!settings.cloudOff) return DEFAULT_FIREBASE_CONFIG;
+  return null;
+}
+let clientId = localStorage.getItem('kt-client');
+if (!clientId) { clientId = uid(); localStorage.setItem('kt-client', clientId); }
+
+const state = {
+  channels: [], messages: [], currentChannel: null,
+  view: 'chat', tagFilter: null, search: '',
+  pendingImages: [], sending: false, editingChannel: null,
+};
+
+/* ================= ローカル保存（IndexedDB） ================= */
+let _db;
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('kyoshitsu-talk', 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      d.createObjectStore('channels', { keyPath: 'id' });
+      const m = d.createObjectStore('messages', { keyPath: 'id' });
+      m.createIndex('channelId', 'channelId', { unique: false });
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function idbReq(req) {
+  return new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+}
+const localBackend = {
+  mode: 'local', chanSubs: [], msgSubs: [],
+  async init() {
+    _db = await openDB();
+    const chs = await this._all('channels');
+    if (chs.length === 0) {
+      await idbReq(_db.transaction('channels', 'readwrite').objectStore('channels')
+        .put({ id: uid(), name: 'れんらく・ざつだん', emoji: '💬', createdAt: Date.now() }));
+    }
+  },
+  _all(store) { return idbReq(_db.transaction(store).objectStore(store).getAll()); },
+  _byChan(chId) {
+    return idbReq(_db.transaction('messages').objectStore('messages').index('channelId').getAll(chId));
+  },
+  _put(store, obj) { return idbReq(_db.transaction(store, 'readwrite').objectStore(store).put(obj)); },
+  _del(store, key) { return idbReq(_db.transaction(store, 'readwrite').objectStore(store).delete(key)); },
+  async _emitChannels() {
+    const chs = (await this._all('channels')).sort((a, b) => a.createdAt - b.createdAt);
+    this.chanSubs.forEach(cb => cb(chs));
+  },
+  async _emitMessages(chId) {
+    const ms = await this._byChan(chId);
+    this.msgSubs.filter(s => s.chId === chId).forEach(s => s.cb(ms));
+  },
+  subChannels(cb) { this.chanSubs.push(cb); this._emitChannels(); return () => { this.chanSubs = this.chanSubs.filter(x => x !== cb); }; },
+  subMessages(chId, cb) {
+    const sub = { chId, cb }; this.msgSubs.push(sub); this._emitMessages(chId);
+    return () => { this.msgSubs = this.msgSubs.filter(x => x !== sub); };
+  },
+  async addChannel(ch) { await this._put('channels', ch); this._emitChannels(); },
+  async updateChannel(ch) { await this._put('channels', ch); this._emitChannels(); },
+  async deleteChannel(id) {
+    await this._del('channels', id);
+    const ms = await this._byChan(id);
+    for (const m of ms) await this._del('messages', m.id);
+    this._emitChannels();
+  },
+  async addMessage(m) { await this._put('messages', m); this._emitMessages(m.channelId); },
+  async deleteMessage(m) { await this._del('messages', m.id); this._emitMessages(m.channelId); },
+  async exportAll() {
+    return { version: 1, channels: await this._all('channels'), messages: await this._all('messages') };
+  },
+  async importAll(data) {
+    for (const c of (data.channels || [])) await this._put('channels', c);
+    for (const m of (data.messages || [])) await this._put('messages', m);
+    this._emitChannels();
+    if (state.currentChannel) this._emitMessages(state.currentChannel);
+  },
+};
+
+/* ================= 共有モード（Firebase） ================= */
+const cloudBackend = {
+  mode: 'cloud', db: null, room: 'school',
+  async init() {
+    const v = '10.14.1';
+    for (const f of ['app', 'auth', 'firestore']) {
+      await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-${f}-compat.js`);
+    }
+    firebase.initializeApp(activeCloudConfig());
+    await firebase.auth().signInAnonymously();
+    this.db = firebase.firestore();
+    // 一度読んだ写真を端末にキャッシュして、通信量と読み取り回数を節約する
+    try { await this.db.enablePersistence({ synchronizeTabs: true }); } catch (e) { console.warn('persistence off', e); }
+    this.room = (settings.room || 'school').trim() || 'school';
+  },
+  col(name) { return this.db.collection('rooms').doc(this.room).collection(name); },
+  subChannels(cb) {
+    return this.col('channels').onSnapshot(
+      snap => cb(snap.docs.map(d => d.data()).sort((a, b) => a.createdAt - b.createdAt)),
+      err => console.error('channels', err));
+  },
+  // 複数枚の写真は1枚=1ドキュメントに分けて保存しているので、groupIdでまとめ直す
+  subMessages(chId, cb) {
+    return this.col('messages').where('channelId', '==', chId).onSnapshot(
+      snap => {
+        const groups = new Map();
+        snap.docs.forEach(d => {
+          const doc = d.data();
+          const key = doc.groupId || doc.id;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(doc);
+        });
+        cb([...groups.values()].map(docs => {
+          docs.sort((a, b) => (a.seq || 0) - (b.seq || 0));
+          return {
+            ...docs[0],
+            text: docs.map(x => x.text).find(t => t) || '',
+            images: docs.flatMap(x => x.images || []),
+            _ids: docs.map(x => x.id),
+          };
+        }));
+      },
+      err => console.error('messages', err));
+  },
+  async addChannel(ch) { await this.col('channels').doc(ch.id).set(ch); },
+  async updateChannel(ch) { await this.col('channels').doc(ch.id).set(ch, { merge: true }); },
+  async deleteChannel(id) {
+    await this.col('channels').doc(id).delete();
+    const snap = await this.col('messages').where('channelId', '==', id).get();
+    const batch = this.db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  },
+  async addMessage(m) {
+    const imgs = m.images || [];
+    if (imgs.length <= 1) {
+      await this.col('messages').doc(m.id).set(m);
+      return;
+    }
+    for (let i = 0; i < imgs.length; i++) {
+      const id = i === 0 ? m.id : `${m.id}_${i}`;
+      await this.col('messages').doc(id).set({
+        ...m, id, groupId: m.id, seq: i,
+        text: i === 0 ? m.text : '',
+        images: [imgs[i]],
+      });
+    }
+  },
+  async deleteMessage(m) {
+    for (const id of (m._ids || [m.id])) await this.col('messages').doc(id).delete();
+  },
+};
+
+let backend = localBackend;
+let unsubMsgs = null;
+
+/* ================= 日付表示 ================= */
+const WD = ['日', '月', '火', '水', '木', '金', '土'];
+function dayKey(ts) { const d = new Date(ts); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+function dayLabel(ts) {
+  const d = new Date(ts), now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const that = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diff = Math.round((today - that) / 86400000);
+  if (diff === 0) return 'きょう';
+  if (diff === 1) return 'きのう';
+  return `${d.getMonth() + 1}月${d.getDate()}日(${WD[d.getDay()]})`;
+}
+function timeLabel(ts) {
+  const d = new Date(ts);
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function monthLabel(ts) { const d = new Date(ts); return `${d.getFullYear()}年${d.getMonth() + 1}月`; }
+
+/* ================= 画像リサイズ ================= */
+function resizeImage(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      // Firestoreの1ドキュメント1MB上限に収まるまで段階的に圧縮する
+      const ATTEMPTS = [[1280, 0.78], [1280, 0.6], [1024, 0.6], [900, 0.5]];
+      let out = '';
+      for (const [max, q] of ATTEMPTS) {
+        const sc = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * sc);
+        c.height = Math.round(img.height * sc);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        out = c.toDataURL('image/jpeg', q);
+        if (out.length < 900000) break;
+      }
+      res(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('画像を読み込めませんでした')); };
+    img.src = url;
+  });
+}
+
+/* ================= チャンネル描画 ================= */
+function renderChannels() {
+  const list = $('#chanList');
+  list.innerHTML = '';
+  state.channels.forEach(ch => {
+    const b = el('button', 'chanItem' + (ch.id === state.currentChannel ? ' active' : ''));
+    b.appendChild(el('span', 'emoji', ch.emoji || '💬'));
+    b.appendChild(el('span', 'nm', ch.name));
+    const edit = el('span', 'edit', '✏️');
+    edit.title = 'チャンネルを編集';
+    edit.addEventListener('click', e => { e.stopPropagation(); openChanModal(ch); });
+    b.appendChild(edit);
+    b.addEventListener('click', () => { selectChannel(ch.id); closeSidebar(); });
+    list.appendChild(b);
+  });
+}
+function renderHeader() {
+  const ch = state.channels.find(c => c.id === state.currentChannel);
+  $('#chanTitle').textContent = ch ? `${ch.emoji || '💬'} ${ch.name}` : 'チャンネルを選んでください';
+}
+
+/* ================= メッセージ描画 ================= */
+function textWithTags(text) {
+  const frag = document.createDocumentFragment();
+  let last = 0;
+  for (const m of text.matchAll(TAG_RE)) {
+    if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+    frag.appendChild(el('span', 'tag', m[0]));
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+  return frag;
+}
+function renderMessages() {
+  const box = $('#messages');
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  box.innerHTML = '';
+  const msgs = state.messages;
+  if (msgs.length === 0) {
+    const e = el('div', '', ''); e.id = 'emptyChat';
+    e.textContent = 'まだメッセージがありません。\n📷ボタンで板書の写真も送れます。';
+    box.appendChild(e);
+    return;
+  }
+  let lastDay = '';
+  msgs.forEach(m => {
+    const dk = dayKey(m.createdAt);
+    if (dk !== lastDay) {
+      lastDay = dk;
+      const sep = el('div', 'daySep');
+      sep.appendChild(el('span', '', dayLabel(m.createdAt)));
+      box.appendChild(sep);
+    }
+    const own = m.clientId === clientId;
+    const row = el('div', 'msgRow' + (own ? ' own' : ''));
+    const col = el('div', 'msgCol');
+    if (!own) col.appendChild(el('div', 'author', m.author || '名無し'));
+    if (m.text) {
+      const b = el('div', 'bubble');
+      b.appendChild(textWithTags(m.text));
+      col.appendChild(b);
+    }
+    if (m.images && m.images.length) {
+      const w = el('div', 'imgWrap' + (m.images.length > 1 ? ' multi' : ''));
+      m.images.forEach((src, i) => {
+        const img = el('img');
+        img.src = src; img.loading = 'lazy'; img.alt = '写真';
+        img.addEventListener('click', () => openLightboxForMessage(m, i));
+        w.appendChild(img);
+      });
+      col.appendChild(w);
+    }
+    row.appendChild(col);
+    const meta = el('div', 'meta');
+    meta.appendChild(el('span', '', timeLabel(m.createdAt)));
+    if (own) {
+      const d = el('button', 'delBtn', '削除');
+      d.addEventListener('click', () => {
+        if (confirm('このメッセージを削除しますか？')) backend.deleteMessage(m);
+      });
+      meta.appendChild(d);
+    }
+    row.appendChild(meta);
+    box.appendChild(row);
+  });
+  if (nearBottom) box.scrollTop = box.scrollHeight;
+}
+
+/* ================= アルバム描画 ================= */
+function albumMessages() {
+  let list = state.messages.filter(m => m.images && m.images.length);
+  if (state.tagFilter) list = list.filter(m => (m.text || '').includes('#' + state.tagFilter));
+  if (state.search) list = list.filter(m => (m.text || '').toLowerCase().includes(state.search.toLowerCase()));
+  return list.slice().sort((a, b) => b.createdAt - a.createdAt);
+}
+function renderAlbum() {
+  const allTagged = state.messages.filter(m => m.images && m.images.length);
+  const tags = new Set();
+  allTagged.forEach(m => { for (const t of (m.text || '').matchAll(TAG_RE)) tags.add(t[1]); });
+  const chips = $('#tagChips');
+  chips.innerHTML = '';
+  if (tags.size) {
+    const all = el('button', 'chip' + (state.tagFilter ? '' : ' on'), 'すべて');
+    all.addEventListener('click', () => { state.tagFilter = null; renderAlbum(); });
+    chips.appendChild(all);
+    [...tags].sort().forEach(t => {
+      const c = el('button', 'chip' + (state.tagFilter === t ? ' on' : ''), '#' + t);
+      c.addEventListener('click', () => { state.tagFilter = (state.tagFilter === t ? null : t); renderAlbum(); });
+      chips.appendChild(c);
+    });
+  }
+  const grid = $('#albumGrid');
+  grid.innerHTML = '';
+  const list = albumMessages();
+  if (list.length === 0) {
+    const e = el('div', ''); e.id = 'emptyAlbum';
+    e.textContent = '写真つきのメッセージが、ここにアルバムとして並びます。\nトークで「#分数 わり算の導入」のように送るとタグで整理できます。';
+    grid.appendChild(e);
+    return;
+  }
+  let lastMonth = '';
+  let cards = null;
+  list.forEach(m => {
+    const ml = monthLabel(m.createdAt);
+    if (ml !== lastMonth) {
+      lastMonth = ml;
+      grid.appendChild(el('div', 'monthHead', ml));
+      cards = el('div', 'cards');
+      grid.appendChild(cards);
+    }
+    const card = el('div', 'card');
+    const th = el('div', 'thumb');
+    const img = el('img');
+    img.src = m.images[0]; img.loading = 'lazy'; img.alt = '板書';
+    th.appendChild(img);
+    if (m.images.length > 1) th.appendChild(el('span', 'cnt', '+' + (m.images.length - 1)));
+    card.appendChild(th);
+    card.appendChild(el('div', 'cap', m.text || ''));
+    const d = new Date(m.createdAt);
+    card.appendChild(el('div', 'who', `${m.author || ''}・${d.getMonth() + 1}/${d.getDate()}`));
+    card.addEventListener('click', () => openLightboxForMessage(m, 0));
+    cards.appendChild(card);
+  });
+}
+
+/* ================= ライトボックス ================= */
+const lb = { items: [], idx: 0 };
+function openLightboxForMessage(msg, imgIdx) {
+  // アルバム表示中は絞り込み結果全体を、トーク中はそのメッセージ内をめくれるように
+  lb.items = [];
+  const source = state.view === 'album' ? albumMessages().slice().reverse() : [msg];
+  source.forEach(m => m.images.forEach((src, i) => {
+    lb.items.push({ src, text: m.text || '', author: m.author || '', ts: m.createdAt, key: m.id + '_' + i });
+  }));
+  lb.idx = Math.max(0, lb.items.findIndex(x => x.key === msg.id + '_' + imgIdx));
+  renderLightbox();
+  $('#lightbox').classList.add('show');
+}
+function renderLightbox() {
+  const it = lb.items[lb.idx];
+  if (!it) return;
+  $('#lbImg').src = it.src;
+  $('#lbCap').textContent = it.text;
+  const d = new Date(it.ts);
+  $('#lbMeta').textContent = `${it.author}・${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${timeLabel(it.ts)}`;
+  const dl = $('#lbDl');
+  dl.href = it.src;
+  if (it.src.startsWith('http')) { dl.removeAttribute('download'); dl.target = '_blank'; }
+  else { dl.setAttribute('download', '板書_' + d.toISOString().slice(0, 10) + '.jpg'); dl.removeAttribute('target'); }
+  $('#lbPrev').style.visibility = lb.idx > 0 ? 'visible' : 'hidden';
+  $('#lbNext').style.visibility = lb.idx < lb.items.length - 1 ? 'visible' : 'hidden';
+}
+$('#lbClose').addEventListener('click', () => $('#lightbox').classList.remove('show'));
+$('#lbPrev').addEventListener('click', () => { if (lb.idx > 0) { lb.idx--; renderLightbox(); } });
+$('#lbNext').addEventListener('click', () => { if (lb.idx < lb.items.length - 1) { lb.idx++; renderLightbox(); } });
+$('#lightbox').addEventListener('click', e => { if (e.target === $('#lightbox')) $('#lightbox').classList.remove('show'); });
+document.addEventListener('keydown', e => {
+  if (!$('#lightbox').classList.contains('show')) return;
+  if (e.key === 'Escape') $('#lightbox').classList.remove('show');
+  if (e.key === 'ArrowLeft') $('#lbPrev').click();
+  if (e.key === 'ArrowRight') $('#lbNext').click();
+});
+
+/* ================= チャンネル操作 ================= */
+function selectChannel(id) {
+  state.currentChannel = id;
+  state.tagFilter = null;
+  if (unsubMsgs) unsubMsgs();
+  state.messages = [];
+  renderMessages(); renderAlbum(); renderChannels(); renderHeader();
+  if (!id) return;
+  unsubMsgs = backend.subMessages(id, msgs => {
+    state.messages = msgs.slice().sort((a, b) => a.createdAt - b.createdAt);
+    renderMessages(); renderAlbum();
+  });
+}
+let chanEmojiSel = '💬';
+function openChanModal(ch) {
+  state.editingChannel = ch || null;
+  $('#chanModalTitle').textContent = ch ? 'チャンネルを編集' : '新しいチャンネル';
+  $('#chanName').value = ch ? ch.name : '';
+  chanEmojiSel = ch ? (ch.emoji || '💬') : '💬';
+  const row = $('#emojiRow');
+  row.innerHTML = '';
+  EMOJIS.forEach(em => {
+    const b = el('button', em === chanEmojiSel ? 'on' : '', em);
+    b.addEventListener('click', () => {
+      chanEmojiSel = em;
+      row.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.textContent === em));
+    });
+    row.appendChild(b);
+  });
+  $('#chanDelRow').style.display = ch ? 'flex' : 'none';
+  $('#chanOverlay').classList.add('show');
+  if (!ch) setTimeout(() => $('#chanName').focus(), 50);
+}
+$('#addChan').addEventListener('click', () => openChanModal(null));
+$('#chanCancel').addEventListener('click', () => $('#chanOverlay').classList.remove('show'));
+$('#chanSave').addEventListener('click', async () => {
+  const name = $('#chanName').value.trim();
+  if (!name) { alert('チャンネル名を入力してください'); return; }
+  if (state.editingChannel) {
+    await backend.updateChannel({ ...state.editingChannel, name, emoji: chanEmojiSel });
+  } else {
+    const ch = { id: uid(), name, emoji: chanEmojiSel, createdAt: Date.now() };
+    await backend.addChannel(ch);
+    selectChannel(ch.id);
+  }
+  $('#chanOverlay').classList.remove('show');
+});
+$('#chanDelete').addEventListener('click', async () => {
+  const ch = state.editingChannel;
+  if (!ch) return;
+  if (!confirm(`「${ch.name}」を削除しますか？中のメッセージと写真もすべて消えます。`)) return;
+  await backend.deleteChannel(ch.id);
+  $('#chanOverlay').classList.remove('show');
+  if (state.currentChannel === ch.id) selectChannel(state.channels.find(c => c.id !== ch.id)?.id || null);
+});
+
+/* ================= 送信 ================= */
+function renderPreview() {
+  const pv = $('#preview');
+  pv.innerHTML = '';
+  pv.classList.toggle('show', state.pendingImages.length > 0);
+  state.pendingImages.forEach((src, i) => {
+    const d = el('div', 'pv');
+    const img = el('img'); img.src = src;
+    const x = el('button', '', '✕');
+    x.addEventListener('click', () => { state.pendingImages.splice(i, 1); renderPreview(); });
+    d.appendChild(img); d.appendChild(x);
+    pv.appendChild(d);
+  });
+}
+$('#camBtn').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', async e => {
+  for (const f of e.target.files) {
+    try { state.pendingImages.push(await resizeImage(f)); }
+    catch (err) { alert(err.message); }
+  }
+  e.target.value = '';
+  renderPreview();
+});
+async function send() {
+  if (state.sending) return;
+  const input = $('#msgInput');
+  const text = input.value.trim();
+  if (!text && state.pendingImages.length === 0) return;
+  if (!state.currentChannel) { alert('先にチャンネルを選んでください'); return; }
+  const msg = {
+    id: uid(), channelId: state.currentChannel,
+    author: settings.name || '名無し', clientId,
+    text, images: state.pendingImages.slice(), createdAt: Date.now(),
+  };
+  state.sending = true;
+  $('#sendBtn').disabled = true;
+  try {
+    await backend.addMessage(msg);
+    input.value = ''; input.style.height = 'auto';
+    state.pendingImages = [];
+    renderPreview();
+    $('#messages').scrollTop = $('#messages').scrollHeight;
+  } catch (err) {
+    console.error(err);
+    alert('送信に失敗しました：' + err.message);
+  } finally {
+    state.sending = false;
+    $('#sendBtn').disabled = false;
+  }
+}
+$('#sendBtn').addEventListener('click', send);
+$('#msgInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && window.matchMedia('(min-width:761px)').matches) {
+    e.preventDefault(); send();
+  }
+});
+$('#msgInput').addEventListener('input', function () {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 110) + 'px';
+});
+
+/* ================= タブ・サイドバー ================= */
+function setView(v) {
+  state.view = v;
+  $('#tabChat').classList.toggle('on', v === 'chat');
+  $('#tabAlbum').classList.toggle('on', v === 'album');
+  $('#chatView').classList.toggle('hide', v !== 'chat');
+  $('#albumView').classList.toggle('show', v === 'album');
+  if (v === 'chat') $('#messages').scrollTop = $('#messages').scrollHeight;
+}
+$('#tabChat').addEventListener('click', () => setView('chat'));
+$('#tabAlbum').addEventListener('click', () => setView('album'));
+$('#menuBtn').addEventListener('click', () => { $('#sidebar').classList.add('open'); $('#scrim').classList.add('show'); });
+function closeSidebar() { $('#sidebar').classList.remove('open'); $('#scrim').classList.remove('show'); }
+$('#scrim').addEventListener('click', closeSidebar);
+$('#albumSearch').addEventListener('input', e => { state.search = e.target.value; renderAlbum(); });
+
+/* ================= 設定 ================= */
+function parseFirebaseConfig(text) {
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('設定のかたまり { ... } が見つかりません');
+  return new Function('return (' + m[0] + ')')();
+}
+function openSettings(firstRun) {
+  $('#setTitle').textContent = firstRun ? '👋 はじめまして！' : '⚙️ 設定';
+  $('#setName').value = settings.name || '';
+  $('#setRoom').value = settings.room || '';
+  const shownCfg = settings.firebaseConfig || (backend.mode === 'cloud' ? DEFAULT_FIREBASE_CONFIG : null);
+  $('#setConfig').value = shownCfg ? JSON.stringify(shownCfg, null, 2) : '';
+  $('#cloudStatus').textContent = backend.mode === 'cloud'
+    ? `✅ いま共有モードで動いています（ルーム: ${cloudBackend.room}）`
+    : 'いまは「この端末のみモード」です。データはこの端末の中だけに保存されます。';
+  const btns = $('#cloudBtns');
+  btns.innerHTML = '';
+  const enable = el('button', 'btn primary', backend.mode === 'cloud' ? '設定を更新して再接続' : '共有モードを有効にする');
+  enable.id = 'cloudEnable';
+  enable.addEventListener('click', () => {
+    try {
+      const txt = $('#setConfig').value.trim();
+      if (txt) settings.firebaseConfig = parseFirebaseConfig(txt);
+      delete settings.cloudOff;
+      settings.room = $('#setRoom').value.trim() || 'school';
+      settings.name = $('#setName').value.trim() || settings.name || '';
+      saveSettings();
+      location.reload();
+    } catch (err) { alert('Firebase設定を読み取れませんでした：' + err.message); }
+  });
+  btns.appendChild(enable);
+  if (backend.mode === 'cloud') {
+    const off = el('button', 'btn ghost', '共有をやめる');
+    off.addEventListener('click', () => {
+      if (!confirm('共有モードをやめて「この端末のみモード」に戻しますか？（サーバー上のデータは消えません）')) return;
+      settings.cloudOff = true;
+      delete settings.firebaseConfig;
+      saveSettings();
+      location.reload();
+    });
+    btns.appendChild(off);
+  }
+  const showBackup = backend.mode === 'local';
+  $('#backupSec').style.display = showBackup ? 'block' : 'none';
+  $('#backupBtns').style.display = showBackup ? 'flex' : 'none';
+  $('#setOverlay').classList.add('show');
+  if (firstRun) setTimeout(() => $('#setName').focus(), 50);
+}
+$('#gearBtn').addEventListener('click', () => openSettings(false));
+$('#setSave').addEventListener('click', () => {
+  settings.name = $('#setName').value.trim();
+  settings.room = $('#setRoom').value.trim();
+  saveSettings();
+  $('#myName').textContent = '👤 ' + (settings.name || '名前未設定');
+  $('#setOverlay').classList.remove('show');
+});
+$('#exportBtn').addEventListener('click', async () => {
+  const data = await localBackend.exportAll();
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'きょうしつトーク_バックアップ.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$('#importBtn').addEventListener('click', () => $('#importFile').click());
+$('#importFile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    await localBackend.importAll(JSON.parse(await f.text()));
+    alert('読み込みました');
+  } catch (err) { alert('読み込みに失敗しました：' + err.message); }
+  e.target.value = '';
+});
+
+/* ================= 起動 ================= */
+async function start() {
+  if (activeCloudConfig()) {
+    try {
+      await cloudBackend.init();
+      backend = cloudBackend;
+      const badge = $('#modeBadge');
+      badge.textContent = `☁️ 共有中：${cloudBackend.room}`;
+      badge.classList.add('cloud');
+    } catch (err) {
+      console.error(err);
+      alert('共有モードに接続できませんでした。この端末のみモードで起動します。\n' + err.message);
+      backend = localBackend;
+    }
+  }
+  if (backend === localBackend) await localBackend.init();
+  $('#myName').textContent = '👤 ' + (settings.name || '名前未設定');
+  backend.subChannels(chs => {
+    state.channels = chs;
+    if (!state.currentChannel || !chs.find(c => c.id === state.currentChannel)) {
+      if (chs[0]) selectChannel(chs[0].id);
+      else { state.currentChannel = null; renderHeader(); }
+    }
+    renderChannels(); renderHeader();
+  });
+  if (!settings.name) openSettings(true);
+}
+start();
+</script>
+</body>
+</html>
