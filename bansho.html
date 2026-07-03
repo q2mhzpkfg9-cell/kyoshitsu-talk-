@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f855a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>きょうしつ板書</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  :root{
+    --accent:#2f855a;
+    --accent-light:#e6f4ec;
+    --bg:#f7f8fb;
+    --ink:#2b3345;
+    --sub:#8a93a6;
+    --line:#e4e8f0;
+    --danger:#ff3b30;
+  }
+  html,body{height:100%}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","ヒラギノ丸ゴ ProN W4",-apple-system,"Segoe UI",sans-serif;
+    color:var(--ink);background:var(--bg);overflow:hidden;
+  }
+  button{font-family:inherit;border:none;background:none;cursor:pointer;color:inherit}
+  input,textarea,select{font-family:inherit;font-size:16px;color:inherit}
+
+  #app{display:flex;flex-direction:column;height:100dvh}
+
+  /* ---------- ヘッダー ---------- */
+  #topbar{
+    display:flex;align-items:center;gap:10px;padding:10px 14px;
+    padding-top:calc(10px + env(safe-area-inset-top));
+    border-bottom:1px solid var(--line);background:#fff;
+  }
+  #topbar h1{font-size:17px;white-space:nowrap}
+  #modeBadge{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:11px;padding:3px 10px;border-radius:99px;background:#eef1f5;color:var(--sub);white-space:nowrap;
+  }
+  #modeBadge.cloud{background:#e2f6e8;color:#1f8a45}
+  #topSpacer{flex:1}
+  #myName{font-size:12.5px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
+  #gearBtn{font-size:19px;padding:4px;border-radius:8px}
+  #gearBtn:hover{background:#f0f2f7}
+
+  /* ---------- アルバム ---------- */
+  #albumTools{padding:12px 14px 4px}
+  #albumSearch{
+    width:100%;border:1px solid var(--line);border-radius:12px;padding:9px 14px;
+    background:#fff;outline:none;
+  }
+  #tagChips{display:flex;gap:7px;overflow-x:auto;padding:10px 0 4px;-webkit-overflow-scrolling:touch}
+  .chip{
+    flex-shrink:0;font-size:12.5px;padding:5px 13px;border-radius:99px;
+    background:#fff;border:1px solid var(--line);color:#5d6678;
+  }
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:bold}
+  #albumGrid{flex:1;overflow-y:auto;padding:8px 14px 110px;-webkit-overflow-scrolling:touch}
+  .monthHead{font-size:13px;font-weight:bold;color:#5d6678;margin:14px 2px 8px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+  .card{
+    background:#fff;border-radius:14px;overflow:hidden;cursor:pointer;
+    box-shadow:0 1px 4px rgba(30,40,70,.07);border:1px solid #eef0f5;
+  }
+  .card:hover{box-shadow:0 3px 10px rgba(30,40,70,.13)}
+  .card .thumb{position:relative}
+  .card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#dde2ea}
+  .card .cnt{
+    position:absolute;right:6px;bottom:6px;background:rgba(20,25,40,.65);color:#fff;
+    font-size:11px;padding:2px 8px;border-radius:99px;
+  }
+  .card .nsync{
+    position:absolute;left:6px;top:6px;background:rgba(255,255,255,.92);color:#1f8a45;
+    font-size:10.5px;padding:2px 8px;border-radius:99px;font-weight:bold;
+  }
+  .card .cap{
+    font-size:12.5px;padding:8px 10px 2px;line-height:1.45;font-weight:bold;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:1em;
+  }
+  .card .who{font-size:10.5px;color:var(--sub);padding:3px 10px 9px}
+  #emptyAlbum{text-align:center;color:var(--sub);font-size:14px;padding:60px 20px;line-height:2}
+
+  /* ---------- 記録ボタン ---------- */
+  #fab{
+    position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:30;
+    background:var(--accent);color:#fff;font-size:15px;font-weight:bold;
+    padding:14px 22px;border-radius:99px;box-shadow:0 4px 14px rgba(47,133,90,.4);
+  }
+  #fab:active{transform:scale(.97)}
+
+  /* ---------- モーダル共通 ---------- */
+  .overlay{
+    display:none;position:fixed;inset:0;background:rgba(20,25,40,.45);z-index:100;
+    align-items:center;justify-content:center;padding:14px;
+  }
+  .overlay.show{display:flex}
+  .modal{
+    background:#fff;border-radius:18px;width:100%;max-width:460px;max-height:90dvh;
+    overflow-y:auto;padding:22px;-webkit-overflow-scrolling:touch;
+  }
+  .modal h2{font-size:17px;margin-bottom:6px}
+  .modal label{display:block;font-size:12.5px;color:#5d6678;margin:14px 0 5px;font-weight:bold}
+  .modal input[type=text],.modal input[type=date],.modal input[type=url],.modal textarea,.modal select{
+    width:100%;border:1.5px solid var(--line);border-radius:11px;padding:10px 13px;outline:none;background:#fff;
+  }
+  .modal input:focus,.modal textarea:focus{border-color:var(--accent)}
+  .modal textarea{min-height:110px;resize:vertical;line-height:1.6}
+  .modal .hint{font-size:11.5px;color:var(--sub);line-height:1.6;margin-top:6px}
+  .row2{display:flex;gap:10px}
+  .row2>div{flex:1}
+  .btnRow{display:flex;gap:10px;margin-top:20px}
+  .btn{
+    flex:1;padding:11px;border-radius:12px;font-size:14.5px;font-weight:bold;text-align:center;
+  }
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:disabled{background:#a8cdbb}
+  .btn.ghost{background:#f0f2f7;color:#5d6678}
+  .btn.danger{background:#ffecec;color:var(--danger)}
+  .modal details{margin-top:18px;border-top:1px solid var(--line);padding-top:4px}
+  .modal summary{font-size:13px;color:var(--sub);cursor:pointer;padding:9px 0}
+  .modal .sec{font-size:13.5px;font-weight:bold;margin-top:18px}
+  .smallBtns{display:flex;gap:8px;margin-top:10px}
+  .smallBtns .btn{font-size:13px;padding:9px}
+  .modal textarea.mono{font-size:12px;font-family:monospace;min-height:90px}
+
+  /* ---------- 写真プレビュー（入力） ---------- */
+  #photoBar{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+  .pv{position:relative}
+  .pv img{width:74px;height:74px;object-fit:cover;border-radius:10px;display:block}
+  .pv button{
+    position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;
+    background:#39415a;color:#fff;font-size:11px;line-height:20px;text-align:center;
+  }
+  #addPhoto{
+    width:74px;height:74px;border-radius:10px;border:2px dashed #c3ccdc;color:#8a93a6;
+    font-size:24px;display:flex;align-items:center;justify-content:center;
+  }
+
+  /* ---------- 詳細ビュー ---------- */
+  #detail{
+    display:none;position:fixed;inset:0;background:rgba(12,16,26,.94);z-index:200;
+    flex-direction:column;
+  }
+  #detail.show{display:flex}
+  #dtTop{
+    display:flex;align-items:center;gap:8px;
+    padding:calc(10px + env(safe-area-inset-top)) 14px 8px;
+  }
+  #dtTitle{flex:1;color:#fff;font-size:14.5px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #dtClose{color:#fff;font-size:24px;padding:4px 10px}
+  #dtImgArea{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+  #dtImg{max-width:96vw;max-height:100%;object-fit:contain;border-radius:6px}
+  .dtNav{position:absolute;top:50%;transform:translateY(-50%);color:#fff;font-size:30px;padding:14px;z-index:2}
+  #dtPrev{left:0}#dtNext{right:0}
+  #dtCnt{
+    position:absolute;bottom:8px;left:50%;transform:translateX(-50%);
+    color:#fff;font-size:11px;background:rgba(0,0,0,.5);padding:2px 10px;border-radius:99px;
+  }
+  #dtPanel{
+    background:#fff;border-radius:18px 18px 0 0;max-height:44dvh;overflow-y:auto;
+    padding:16px 18px calc(16px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch;
+  }
+  #dtTags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .dtTag{font-size:12px;padding:3px 11px;border-radius:99px;background:var(--accent-light);color:var(--accent);font-weight:bold}
+  #dtFlowHead{font-size:12.5px;font-weight:bold;color:#5d6678;margin:10px 0 4px}
+  #dtFlow{font-size:14px;line-height:1.75;white-space:pre-wrap;word-break:break-word}
+  #dtFlow:empty::before{content:'（授業の流れは未記入）';color:var(--sub);font-size:12.5px}
+  #dtMeta{font-size:11.5px;color:var(--sub);margin-top:10px}
+  #dtBtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  #dtBtns .btn{flex:1 1 40%;font-size:13px;padding:10px}
+  a.btn{text-decoration:none;display:block}
+
+  /* ---------- トースト ---------- */
+  #toast{
+    display:none;position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(84px + env(safe-area-inset-bottom));z-index:300;
+    background:rgba(30,38,55,.92);color:#fff;font-size:13px;
+    padding:10px 18px;border-radius:12px;max-width:88vw;text-align:center;line-height:1.5;
+  }
+  #toast.show{display:block}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <h1>🖼 きょうしつ板書</h1>
+    <span id="modeBadge">📱 この端末のみ</span>
+    <span id="topSpacer"></span>
+    <span id="myName"></span>
+    <button id="gearBtn" title="設定">⚙️</button>
+  </header>
+
+  <div id="albumTools">
+    <input type="search" id="albumSearch" placeholder="🔍 単元名・授業の流れを検索">
+    <div id="tagChips"></div>
+  </div>
+  <div id="albumGrid"></div>
+
+  <button id="fab">＋ 板書を記録</button>
+</div>
+
+<!-- 記録の入力 -->
+<div class="overlay" id="recOverlay">
+  <div class="modal">
+    <h2>📷 板書を記録する</h2>
+    <label>板書の写真</label>
+    <div id="photoBar">
+      <button id="addPhoto" title="写真を追加">＋</button>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+    <div class="row2">
+      <div>
+        <label>日付</label>
+        <input type="date" id="recDate">
+      </div>
+      <div>
+        <label>時数</label>
+        <input type="text" id="recPeriod" placeholder="例：第3時">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>学年</label>
+        <select id="recGrade">
+          <option value="">選択</option>
+          <option>1年</option><option>2年</option><option>3年</option>
+          <option>4年</option><option>5年</option><option>6年</option>
+          <option>全学年</option>
+        </select>
+      </div>
+      <div>
+        <label>教科</label>
+        <select id="recSubject">
+          <option value="">選択</option>
+          <option>国語</option><option>算数</option><option>理科</option><option>社会</option>
+          <option>生活</option><option>音楽</option><option>図工</option><option>体育</option>
+          <option>家庭</option><option>道徳</option><option>外国語</option><option>総合</option>
+          <option>学活・行事</option>
+        </select>
+      </div>
+    </div>
+    <label>単元名</label>
+    <input type="text" id="recUnit" list="unitList" placeholder="例：長さ">
+    <datalist id="unitList"></datalist>
+    <label>授業の流れ</label>
+    <textarea id="recFlow" placeholder="例：&#10;1. 前時のふり返り（5分）&#10;2. めあての確認「1mより長いものをはかろう」&#10;3. グループで教室のものを測定（20分）&#10;4. 結果の共有・まとめ"></textarea>
+    <div class="btnRow">
+      <button class="btn ghost" id="recCancel">キャンセル</button>
+      <button class="btn primary" id="recSave">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 詳細 -->
+<div id="detail">
+  <div id="dtTop">
+    <div id="dtTitle"></div>
+    <button id="dtClose">✕</button>
+  </div>
+  <div id="dtImgArea">
+    <button class="dtNav" id="dtPrev">‹</button>
+    <img id="dtImg" alt="板書">
+    <button class="dtNav" id="dtNext">›</button>
+    <span id="dtCnt"></span>
+  </div>
+  <div id="dtPanel">
+    <div id="dtTags"></div>
+    <div id="dtFlowHead">📝 授業の流れ</div>
+    <div id="dtFlow"></div>
+    <div id="dtMeta"></div>
+    <div id="dtBtns"></div>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div class="overlay" id="setOverlay">
+  <div class="modal">
+    <h2>⚙️ 設定</h2>
+    <label>あなたの名前（任意・記録者として表示されます）</label>
+    <input type="text" id="setName" placeholder="例：山田（空欄でもOK）">
+
+    <div class="sec">📘 Notion 連携</div>
+    <p class="hint">
+      中継サーバー（Cloudflare Worker）のURLと合言葉を入れると、
+      保存した板書が自動でNotionの「板書アルバム」データベースに登録されます。
+    </p>
+    <label>中継サーバーのURL</label>
+    <input type="url" id="setWorkerUrl" placeholder="https://○○○.workers.dev">
+    <label>合言葉（Workerに設定したSHARED_SECRET）</label>
+    <input type="text" id="setWorkerSecret" placeholder="例：sakura-bansho-2026">
+
+    <details id="advancedSettings">
+      <summary>🔧 くわしい設定（ふだんは触らなくてOK）</summary>
+      <div class="sec">☁️ 共有モード（同僚とリアルタイム同期）</div>
+      <p class="hint" id="cloudStatus"></p>
+      <label>ルームコード（同じコードの人とつながります）</label>
+      <input type="text" id="setRoom" placeholder="例：sakura-shou-2026">
+      <label>Firebase設定（コンソールからコピーして貼り付け）</label>
+      <textarea id="setConfig" class="mono" placeholder='const firebaseConfig = { apiKey: "...", ... } のかたまりを丸ごと貼り付けてOK'></textarea>
+      <p class="hint">
+        このアプリには共有サーバーの設定が組み込み済みです。ここを変更するのは、
+        自分たちの学校専用のFirebaseプロジェクトに切り替えたい場合だけです。
+      </p>
+      <div class="smallBtns" id="cloudBtns"></div>
+      <div class="sec" id="backupSec">💾 バックアップ（この端末のみモード）</div>
+      <div class="smallBtns" id="backupBtns">
+        <button class="btn ghost" id="exportBtn">書き出す</button>
+        <button class="btn ghost" id="importBtn">読み込む</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+    </details>
+
+    <div class="btnRow">
+      <button class="btn primary" id="setSave">保存して閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+/* ================= ユーティリティ ================= */
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('読み込み失敗: ' + src));
+    document.head.appendChild(s);
+  });
+}
+let toastTimer = null;
+function toast(msg, ms = 3000) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+/* ================= 設定・状態 ================= */
+const settings = JSON.parse(localStorage.getItem('kb-settings') || '{}');
+function saveSettings() { localStorage.setItem('kb-settings', JSON.stringify(settings)); }
+// きょうしつトークと同じFirebaseプロジェクトを使う（保存先コレクションは別）
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDbYzUJ7EuOUmfkc_bdrDoOOPmD77Z-wlc',
+  authDomain: 'kyoshitsu-talk.firebaseapp.com',
+  projectId: 'kyoshitsu-talk',
+  storageBucket: 'kyoshitsu-talk.firebasestorage.app',
+  messagingSenderId: '492385982449',
+  appId: '1:492385982449:web:e32fc20a91a4d5d6635650',
+};
+function activeCloudConfig() {
+  if (settings.firebaseConfig) return settings.firebaseConfig;
+  if (!settings.cloudOff) return DEFAULT_FIREBASE_CONFIG;
+  return null;
+}
+let clientId = localStorage.getItem('kb-client');
+if (!clientId) { clientId = uid(); localStorage.setItem('kb-client', clientId); }
+
+const state = {
+  boards: [], tagFilter: null, search: '',
+  pendingImages: [], saving: false,
+  detailId: null, detailIdx: 0,
+};
+
+/* ================= ローカル保存（IndexedDB） ================= */
+let _db;
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('kyoshitsu-bansho', 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore('boards', { keyPath: 'id' }); };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function idbReq(req) {
+  return new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+}
+const localBackend = {
+  mode: 'local', subs: [],
+  async init() { _db = await openDB(); },
+  _all() { return idbReq(_db.transaction('boards').objectStore('boards').getAll()); },
+  _put(obj) { return idbReq(_db.transaction('boards', 'readwrite').objectStore('boards').put(obj)); },
+  _del(key) { return idbReq(_db.transaction('boards', 'readwrite').objectStore('boards').delete(key)); },
+  async _emit() {
+    const bs = await this._all();
+    this.subs.forEach(cb => cb(bs));
+  },
+  subBoards(cb) { this.subs.push(cb); this._emit(); return () => { this.subs = this.subs.filter(x => x !== cb); }; },
+  async addBoard(b) { await this._put(b); this._emit(); },
+  async setNotionUrl(id, url) {
+    const b = await idbReq(_db.transaction('boards').objectStore('boards').get(id));
+    if (b) { b.notionUrl = url; await this._put(b); this._emit(); }
+  },
+  async deleteBoard(b) { await this._del(b.id); this._emit(); },
+  async exportAll() { return { version: 1, boards: await this._all() }; },
+  async importAll(data) {
+    for (const b of (data.boards || [])) await this._put(b);
+    this._emit();
+  },
+};
+
+/* ================= 共有モード（Firebase） ================= */
+const cloudBackend = {
+  mode: 'cloud', db: null, room: 'school',
+  async init() {
+    const v = '10.14.1';
+    for (const f of ['app', 'auth', 'firestore']) {
+      await loadScript(`https://www.gstatic.com/firebasejs/${v}/firebase-${f}-compat.js`);
+    }
+    firebase.initializeApp(activeCloudConfig());
+    await firebase.auth().signInAnonymously();
+    this.db = firebase.firestore();
+    // 一度読んだ写真を端末にキャッシュして、通信量と読み取り回数を節約する
+    try { await this.db.enablePersistence({ synchronizeTabs: true }); } catch (e) { console.warn('persistence off', e); }
+    this.room = (settings.room || 'school').trim() || 'school';
+  },
+  col(name) { return this.db.collection('rooms').doc(this.room).collection(name); },
+  // 複数枚の写真は1枚=1ドキュメントに分けて保存しているので、groupIdでまとめ直す
+  subBoards(cb) {
+    return this.col('boards').onSnapshot(
+      snap => {
+        const groups = new Map();
+        snap.docs.forEach(d => {
+          const doc = d.data();
+          const key = doc.groupId || doc.id;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(doc);
+        });
+        cb([...groups.values()].map(docs => {
+          docs.sort((a, b) => (a.seq || 0) - (b.seq || 0));
+          return {
+            ...docs[0],
+            flow: docs.map(x => x.flow).find(t => t) || '',
+            notionUrl: docs.map(x => x.notionUrl).find(t => t) || null,
+            images: docs.flatMap(x => x.images || []),
+            _ids: docs.map(x => x.id),
+          };
+        }));
+      },
+      err => console.error('boards', err));
+  },
+  async addBoard(b) {
+    const imgs = b.images || [];
+    if (imgs.length <= 1) {
+      await this.col('boards').doc(b.id).set(b);
+      return;
+    }
+    for (let i = 0; i < imgs.length; i++) {
+      const id = i === 0 ? b.id : `${b.id}_${i}`;
+      await this.col('boards').doc(id).set({
+        ...b, id, groupId: b.id, seq: i,
+        flow: i === 0 ? b.flow : '',
+        images: [imgs[i]],
+      });
+    }
+  },
+  async setNotionUrl(id, url) { await this.col('boards').doc(id).update({ notionUrl: url }); },
+  async deleteBoard(b) {
+    for (const id of (b._ids || [b.id])) await this.col('boards').doc(id).delete();
+  },
+};
+
+let backend = localBackend;
+
+/* ================= 日付表示 ================= */
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function boardTs(b) {
+  if (b.date) {
+    const [y, m, d] = b.date.split('-').map(Number);
+    if (y && m && d) return new Date(y, m - 1, d).getTime();
+  }
+  return b.createdAt;
+}
+function dateLabel(b) {
+  const d = new Date(boardTs(b));
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+function monthLabel(ts) { const d = new Date(ts); return `${d.getFullYear()}年${d.getMonth() + 1}月`; }
+function boardTitle(b) {
+  const unit = b.unit ? `「${b.unit}」` : '';
+  return [b.grade, b.subject && (b.subject + unit) || unit, b.period].filter(Boolean).join(' ')
+    || '板書の記録';
+}
+
+/* ================= 画像リサイズ ================= */
+function resizeImage(file) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      // Firestoreの1ドキュメント1MB上限に収まるまで段階的に圧縮する
+      const ATTEMPTS = [[1280, 0.78], [1280, 0.6], [1024, 0.6], [900, 0.5]];
+      let out = '';
+      for (const [max, q] of ATTEMPTS) {
+        const sc = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * sc);
+        c.height = Math.round(img.height * sc);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        out = c.toDataURL('image/jpeg', q);
+        if (out.length < 900000) break;
+      }
+      res(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('画像を読み込めませんでした')); };
+    img.src = url;
+  });
+}
+
+/* ================= アルバム描画 ================= */
+function filteredBoards() {
+  let list = state.boards.slice();
+  if (state.tagFilter) {
+    list = list.filter(b => b.grade === state.tagFilter || b.subject === state.tagFilter || b.unit === state.tagFilter);
+  }
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    list = list.filter(b =>
+      [b.unit, b.flow, b.subject, b.grade, b.period, b.author]
+        .some(v => (v || '').toLowerCase().includes(q)));
+  }
+  return list.sort((a, b) => boardTs(b) - boardTs(a) || b.createdAt - a.createdAt);
+}
+function renderChips() {
+  const grades = new Set(), subjects = new Set(), units = new Set();
+  state.boards.forEach(b => {
+    if (b.grade) grades.add(b.grade);
+    if (b.subject) subjects.add(b.subject);
+    if (b.unit) units.add(b.unit);
+  });
+  const chips = $('#tagChips');
+  chips.innerHTML = '';
+  const tags = [...[...grades].sort(), ...[...subjects].sort(), ...[...units].sort()];
+  if (!tags.length) return;
+  const all = el('button', 'chip' + (state.tagFilter ? '' : ' on'), 'すべて');
+  all.addEventListener('click', () => { state.tagFilter = null; renderAlbum(); });
+  chips.appendChild(all);
+  tags.forEach(t => {
+    const c = el('button', 'chip' + (state.tagFilter === t ? ' on' : ''), '#' + t);
+    c.addEventListener('click', () => { state.tagFilter = (state.tagFilter === t ? null : t); renderAlbum(); });
+    chips.appendChild(c);
+  });
+}
+function renderAlbum() {
+  renderChips();
+  const grid = $('#albumGrid');
+  grid.innerHTML = '';
+  const list = filteredBoards();
+  if (list.length === 0) {
+    const e = el('div', ''); e.id = 'emptyAlbum';
+    e.textContent = 'まだ記録がありません。\n右下の「＋板書を記録」から、板書の写真と授業の流れを残せます。';
+    grid.appendChild(e);
+    return;
+  }
+  let lastMonth = '';
+  let cards = null;
+  list.forEach(b => {
+    const ml = monthLabel(boardTs(b));
+    if (ml !== lastMonth) {
+      lastMonth = ml;
+      grid.appendChild(el('div', 'monthHead', ml));
+      cards = el('div', 'cards');
+      grid.appendChild(cards);
+    }
+    const card = el('div', 'card');
+    const th = el('div', 'thumb');
+    const img = el('img');
+    img.src = (b.images && b.images[0]) || ''; img.loading = 'lazy'; img.alt = '板書';
+    th.appendChild(img);
+    if (b.images && b.images.length > 1) th.appendChild(el('span', 'cnt', '+' + (b.images.length - 1)));
+    if (b.notionUrl) th.appendChild(el('span', 'nsync', '📘 Notion'));
+    card.appendChild(th);
+    card.appendChild(el('div', 'cap', boardTitle(b)));
+    card.appendChild(el('div', 'who', [b.author, dateLabel(b)].filter(Boolean).join('・')));
+    card.addEventListener('click', () => openDetail(b.id));
+    cards.appendChild(card);
+  });
+}
+
+/* ================= 詳細ビュー ================= */
+function currentDetail() { return state.boards.find(b => b.id === state.detailId) || null; }
+function openDetail(id) {
+  state.detailId = id;
+  state.detailIdx = 0;
+  renderDetail();
+  $('#detail').classList.add('show');
+}
+function closeDetail() {
+  state.detailId = null;
+  $('#detail').classList.remove('show');
+}
+function renderDetail() {
+  const b = currentDetail();
+  if (!b) { closeDetail(); return; }
+  const imgs = b.images || [];
+  if (state.detailIdx >= imgs.length) state.detailIdx = 0;
+  $('#dtTitle').textContent = boardTitle(b);
+  $('#dtImg').src = imgs[state.detailIdx] || '';
+  $('#dtCnt').textContent = imgs.length > 1 ? `${state.detailIdx + 1} / ${imgs.length}` : '';
+  $('#dtPrev').style.visibility = state.detailIdx > 0 ? 'visible' : 'hidden';
+  $('#dtNext').style.visibility = state.detailIdx < imgs.length - 1 ? 'visible' : 'hidden';
+  const tags = $('#dtTags');
+  tags.innerHTML = '';
+  [b.grade, b.subject, b.unit, b.period].filter(Boolean).forEach(t => tags.appendChild(el('span', 'dtTag', '#' + t)));
+  $('#dtFlow').textContent = b.flow || '';
+  const d = new Date(boardTs(b));
+  $('#dtMeta').textContent = [b.author, `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`].filter(Boolean).join('・');
+
+  const btns = $('#dtBtns');
+  btns.innerHTML = '';
+  const dl = el('a', 'btn ghost', '⬇ 写真を保存');
+  dl.href = imgs[state.detailIdx] || '#';
+  dl.setAttribute('download', `板書_${b.date || ''}.jpg`);
+  btns.appendChild(dl);
+  if (b.notionUrl) {
+    const open = el('a', 'btn ghost', '📘 Notionで開く');
+    open.href = b.notionUrl; open.target = '_blank'; open.rel = 'noopener';
+    btns.appendChild(open);
+  } else if (settings.workerUrl) {
+    const send = el('button', 'btn primary', '📘 Notionに送る');
+    send.addEventListener('click', () => sendToNotion(b, send));
+    btns.appendChild(send);
+  }
+  const del = el('button', 'btn danger', '🗑 削除');
+  del.addEventListener('click', async () => {
+    if (!confirm('この記録を削除しますか？共有中の場合、全員の画面から消えます。\n（Notionに登録済みのページは残ります）')) return;
+    await backend.deleteBoard(b);
+    closeDetail();
+  });
+  btns.appendChild(del);
+}
+$('#dtClose').addEventListener('click', closeDetail);
+$('#dtPrev').addEventListener('click', () => { if (state.detailIdx > 0) { state.detailIdx--; renderDetail(); } });
+$('#dtNext').addEventListener('click', () => {
+  const b = currentDetail();
+  if (b && state.detailIdx < b.images.length - 1) { state.detailIdx++; renderDetail(); }
+});
+document.addEventListener('keydown', e => {
+  if (!$('#detail').classList.contains('show')) return;
+  if (e.key === 'Escape') closeDetail();
+  if (e.key === 'ArrowLeft') $('#dtPrev').click();
+  if (e.key === 'ArrowRight') $('#dtNext').click();
+});
+
+/* ================= Notion送信 ================= */
+async function sendToNotion(b, btn) {
+  if (!settings.workerUrl) return;
+  if (btn) { btn.disabled = true; btn.textContent = '送信中…'; }
+  toast('📘 Notionに送信中…（写真の枚数によって少し時間がかかります）', 60000);
+  try {
+    const res = await fetch(settings.workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret: settings.workerSecret || '',
+        record: {
+          date: b.date || todayStr(),
+          grade: b.grade || '', subject: b.subject || '',
+          unit: b.unit || '', period: b.period || '',
+          author: b.author || '', flow: b.flow || '',
+          images: b.images || [],
+        },
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    await backend.setNotionUrl(b.id, data.url);
+    toast('✅ Notionに登録しました');
+    if (state.detailId === b.id) renderDetail();
+  } catch (err) {
+    console.error(err);
+    toast('⚠️ Notionへの送信に失敗しました。あとで詳細画面から再送できます。\n' + err.message, 6000);
+    if (btn) { btn.disabled = false; btn.textContent = '📘 Notionに送る'; }
+  }
+}
+
+/* ================= 記録の入力 ================= */
+function renderPhotoBar() {
+  const bar = $('#photoBar');
+  bar.querySelectorAll('.pv').forEach(x => x.remove());
+  state.pendingImages.forEach((src, i) => {
+    const d = el('div', 'pv');
+    const img = el('img'); img.src = src;
+    const x = el('button', '', '✕');
+    x.addEventListener('click', () => { state.pendingImages.splice(i, 1); renderPhotoBar(); });
+    d.appendChild(img); d.appendChild(x);
+    bar.insertBefore(d, $('#addPhoto'));
+  });
+}
+function openRecModal() {
+  state.pendingImages = [];
+  renderPhotoBar();
+  $('#recDate').value = todayStr();
+  $('#recPeriod').value = '';
+  $('#recUnit').value = '';
+  $('#recFlow').value = '';
+  // 学年・教科は同じ先生が続けて使うことが多いので前回の値を残す
+  if (settings.lastGrade) $('#recGrade').value = settings.lastGrade;
+  if (settings.lastSubject) $('#recSubject').value = settings.lastSubject;
+  const dl = $('#unitList');
+  dl.innerHTML = '';
+  [...new Set(state.boards.map(b => b.unit).filter(Boolean))].sort().forEach(u => {
+    const o = document.createElement('option'); o.value = u; dl.appendChild(o);
+  });
+  $('#recOverlay').classList.add('show');
+}
+$('#fab').addEventListener('click', openRecModal);
+$('#recCancel').addEventListener('click', () => $('#recOverlay').classList.remove('show'));
+$('#addPhoto').addEventListener('click', () => $('#fileInput').click());
+$('#fileInput').addEventListener('change', async e => {
+  for (const f of e.target.files) {
+    try { state.pendingImages.push(await resizeImage(f)); }
+    catch (err) { alert(err.message); }
+  }
+  e.target.value = '';
+  renderPhotoBar();
+});
+$('#recSave').addEventListener('click', async () => {
+  if (state.saving) return;
+  if (state.pendingImages.length === 0) { alert('板書の写真を1枚以上えらんでください'); return; }
+  const b = {
+    id: uid(),
+    date: $('#recDate').value || todayStr(),
+    grade: $('#recGrade').value,
+    subject: $('#recSubject').value,
+    unit: $('#recUnit').value.trim(),
+    period: $('#recPeriod').value.trim(),
+    flow: $('#recFlow').value.trim(),
+    images: state.pendingImages.slice(),
+    author: settings.name || '',
+    clientId,
+    createdAt: Date.now(),
+  };
+  state.saving = true;
+  $('#recSave').disabled = true;
+  try {
+    await backend.addBoard(b);
+    settings.lastGrade = b.grade;
+    settings.lastSubject = b.subject;
+    saveSettings();
+    $('#recOverlay').classList.remove('show');
+    if (settings.workerUrl) sendToNotion(b);   // 保存とは切り離して裏で送る
+    else toast('✅ 保存しました');
+  } catch (err) {
+    console.error(err);
+    alert('保存に失敗しました：' + err.message);
+  } finally {
+    state.saving = false;
+    $('#recSave').disabled = false;
+  }
+});
+
+$('#albumSearch').addEventListener('input', e => { state.search = e.target.value; renderAlbum(); });
+
+/* ================= 設定 ================= */
+function parseFirebaseConfig(text) {
+  const m = text.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('設定のかたまり { ... } が見つかりません');
+  return new Function('return (' + m[0] + ')')();
+}
+function openSettings() {
+  $('#setName').value = settings.name || '';
+  $('#setWorkerUrl').value = settings.workerUrl || '';
+  $('#setWorkerSecret').value = settings.workerSecret || '';
+  $('#setRoom').value = settings.room || '';
+  const shownCfg = settings.firebaseConfig || (backend.mode === 'cloud' ? DEFAULT_FIREBASE_CONFIG : null);
+  $('#setConfig').value = shownCfg ? JSON.stringify(shownCfg, null, 2) : '';
+  $('#cloudStatus').textContent = backend.mode === 'cloud'
+    ? `✅ いま共有モードで動いています（ルーム: ${cloudBackend.room}）`
+    : 'いまは「この端末のみモード」です。データはこの端末の中だけに保存されます。';
+  const btns = $('#cloudBtns');
+  btns.innerHTML = '';
+  const enable = el('button', 'btn primary', backend.mode === 'cloud' ? '設定を更新して再接続' : '共有モードを有効にする');
+  enable.addEventListener('click', () => {
+    try {
+      const txt = $('#setConfig').value.trim();
+      if (txt) settings.firebaseConfig = parseFirebaseConfig(txt);
+      delete settings.cloudOff;
+      settings.room = $('#setRoom').value.trim() || 'school';
+      settings.name = $('#setName').value.trim() || settings.name || '';
+      saveSettings();
+      location.reload();
+    } catch (err) { alert('Firebase設定を読み取れませんでした：' + err.message); }
+  });
+  btns.appendChild(enable);
+  if (backend.mode === 'cloud') {
+    const off = el('button', 'btn ghost', '共有をやめる');
+    off.addEventListener('click', () => {
+      if (!confirm('共有モードをやめて「この端末のみモード」に戻しますか？（サーバー上のデータは消えません）')) return;
+      settings.cloudOff = true;
+      delete settings.firebaseConfig;
+      saveSettings();
+      location.reload();
+    });
+    btns.appendChild(off);
+  }
+  const showBackup = backend.mode === 'local';
+  $('#backupSec').style.display = showBackup ? 'block' : 'none';
+  $('#backupBtns').style.display = showBackup ? 'flex' : 'none';
+  $('#advancedSettings').open = false;
+  $('#setOverlay').classList.add('show');
+}
+$('#gearBtn').addEventListener('click', openSettings);
+$('#setSave').addEventListener('click', () => {
+  settings.name = $('#setName').value.trim();
+  settings.workerUrl = $('#setWorkerUrl').value.trim().replace(/\/+$/, '');
+  settings.workerSecret = $('#setWorkerSecret').value.trim();
+  settings.room = $('#setRoom').value.trim();
+  saveSettings();
+  renderMyName();
+  $('#setOverlay').classList.remove('show');
+  renderAlbum();
+});
+$('#exportBtn').addEventListener('click', async () => {
+  const data = await localBackend.exportAll();
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'きょうしつ板書_バックアップ.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+$('#importBtn').addEventListener('click', () => $('#importFile').click());
+$('#importFile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    await localBackend.importAll(JSON.parse(await f.text()));
+    alert('読み込みました');
+  } catch (err) { alert('読み込みに失敗しました：' + err.message); }
+  e.target.value = '';
+});
+
+/* ================= 起動 ================= */
+async function start() {
+  if (activeCloudConfig()) {
+    try {
+      await cloudBackend.init();
+      backend = cloudBackend;
+      const badge = $('#modeBadge');
+      badge.textContent = `☁️ 共有中：${cloudBackend.room}`;
+      badge.classList.add('cloud');
+    } catch (err) {
+      console.error(err);
+      alert('共有モードに接続できませんでした。この端末のみモードで起動します。\n' + err.message);
+      backend = localBackend;
+    }
+  }
+  if (backend === localBackend) await localBackend.init();
+  renderMyName();
+  backend.subBoards(bs => {
+    state.boards = bs;
+    renderAlbum();
+    if (state.detailId) renderDetail();
+  });
+}
+function renderMyName() {
+  $('#myName').textContent = settings.name ? '👤 ' + settings.name : '';
+}
+start();
+</script>
+</body>
+</html>
